@@ -1,0 +1,57 @@
+name: Sodalite DLC Bot 24/7
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+  schedule:
+    # Запуск по расписанию для постоянного поддержания работы бота
+    - cron: '*/5 * * * *'
+
+concurrency:
+  group: sodalite-bot-session
+  cancel-in-progress: false
+
+jobs:
+  run-bot:
+    name: Run Sodalite Bot with Keep-Alive
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Bot with 3-Minute Keep-Alive Heartbeat
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+        run: |
+          echo "================================================="
+          echo "Запуск Sodalite DLC Discord Bot на GitHub Actions"
+          echo "================================================="
+          
+          # Фоновый процесс Keep-Alive: каждые 3 минуты (180 сек) пишет команду и статус активности,
+          # чтобы GitHub Actions не засыпал и не отключал сессию из-за простоя в консоли
+          (
+            while true; do
+              sleep 180
+              echo "[$(date '+%Y-%m-%d %H:%M:%S')] [Keep-Alive Heartbeat] Пробуждение сессии: бот активен, процесс работает!"
+            done
+          ) &
+          
+          # Цикл запуска и автоматического перезапуска бота при падении
+          while true; do
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Запуск процесса бота..."
+            python -u bot.py || true
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Процесс бота завершился. Перезапуск через 5 секунд..."
+            sleep 5
+          done
