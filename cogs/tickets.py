@@ -58,13 +58,6 @@ class MediaApplicationModal(discord.ui.Modal, title="Sodalite DLC | Заявка
         max_length=50,
         required=True
     )
-    plans = discord.ui.TextInput(
-        label="Планы по съемке Sodalite DLC",
-        style=discord.TextStyle.paragraph,
-        placeholder="Какой контент планируете делать с Sodalite DLC? (обзоры, дуэли, стримы...)",
-        max_length=1000,
-        required=True
-    )
 
     def __init__(self, cog):
         super().__init__()
@@ -75,8 +68,7 @@ class MediaApplicationModal(discord.ui.Modal, title="Sodalite DLC | Заявка
         details = (
             f"**Канал:** {self.channel_url.value}\n"
             f"**Подписчики:** {self.subscribers.value}\n"
-            f"**Просмотры:** {self.views.value}\n"
-            f"**Планы на контент:**\n{self.plans.value}"
+            f"**Просмотры:** {self.views.value}"
         )
         await self.cog.create_ticket_channel(
             interaction=interaction,
