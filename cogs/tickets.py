@@ -48,7 +48,7 @@ class MediaApplicationModal(discord.ui.Modal, title="Sodalite DLC | Заявка
     )
     subscribers = discord.ui.TextInput(
         label="Подписчики и средние просмотры",
-        placeholder="Например: 5,000 подписчиков, ~2k просмотров на видео",
+        placeholder="Например: 30 подписчиков, 100 просмотров на видео",
         max_length=100,
         required=True
     )
