@@ -47,9 +47,15 @@ class MediaApplicationModal(discord.ui.Modal, title="Sodalite DLC | Заявка
         required=True
     )
     subscribers = discord.ui.TextInput(
-        label="Подписчики и средние просмотры",
-        placeholder="Например: 30 подписчиков, 100 просмотров на видео",
-        max_length=100,
+        label="Количество подписчиков",
+        placeholder="Например: 30",
+        max_length=50,
+        required=True
+    )
+    views = discord.ui.TextInput(
+        label="Среднее количество просмотров",
+        placeholder="Например: 100",
+        max_length=50,
         required=True
     )
     plans = discord.ui.TextInput(
@@ -68,7 +74,8 @@ class MediaApplicationModal(discord.ui.Modal, title="Sodalite DLC | Заявка
         await interaction.response.defer(ephemeral=True)
         details = (
             f"**Канал:** {self.channel_url.value}\n"
-            f"**Статистика:** {self.subscribers.value}\n"
+            f"**Подписчики:** {self.subscribers.value}\n"
+            f"**Просмотры:** {self.views.value}\n"
             f"**Планы на контент:**\n{self.plans.value}"
         )
         await self.cog.create_ticket_channel(
