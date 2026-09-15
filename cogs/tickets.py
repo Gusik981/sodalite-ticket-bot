@@ -282,7 +282,7 @@ class TicketsCog(commands.Cog, name="Tickets"):
             if cat.name.lower() in ["sodalite тикеты", "тикеты", "tickets", "поддержка"]:
                 return cat
 
-        return await guild.create_category("💎 Sodalite Тикеты")
+        return await guild.create_category("🎫・TICKETS・💎")
 
     async def create_ticket_channel(self, interaction: discord.Interaction, category_name: str, topic: str, details: str):
         guild = interaction.guild
