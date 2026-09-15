@@ -32,6 +32,10 @@ def load_config() -> dict:
         except Exception as e:
             logger.warning(f"Не удалось прочитать config.json: {e}")
 
+    # По умолчанию для сервера Sodalite DLC
+    cfg.setdefault("guild_id", 1284717549535363212)
+    cfg.setdefault("support_role_id", 1548007523024506960)  # Роль @Developer
+
     # Переменные окружения имеют приоритет (для облачных хостингов и GitHub)
     if os.getenv("DISCORD_TOKEN"):
         cfg["token"] = os.getenv("DISCORD_TOKEN")
