@@ -271,15 +271,14 @@ class TicketsCog(commands.Cog, name="Tickets"):
         self.bot.add_view(TicketClosedControlView(self))
 
     async def get_or_create_category(self, guild: discord.Guild) -> discord.CategoryChannel:
-        cat_id = self.config.get("ticket_category_id", 0)
+        cat_id = self.config.get("ticket_category_id", 1549529612936024155)
         if cat_id:
-            cat = guild.get_channel(cat_id)
+            cat = guild.get_channel(int(cat_id))
             if isinstance(cat, discord.CategoryChannel):
                 return cat
 
-        # Ищем по названию категории
         for cat in guild.categories:
-            if cat.name.lower() in ["sodalite тикеты", "тикеты", "tickets", "поддержка"]:
+            if "tickets" in cat.name.lower() and "closed" not in cat.name.lower():
                 return cat
 
         return await guild.create_category("🎫・TICKETS・💎")
@@ -366,9 +365,9 @@ class TicketsCog(commands.Cog, name="Tickets"):
         )
 
     async def get_closed_category(self, guild: discord.Guild) -> discord.CategoryChannel:
-        cat_id = self.config.get("closed_category_id", 0)
+        cat_id = self.config.get("closed_category_id", 1549529968210481293)
         if cat_id:
-            cat = guild.get_channel(cat_id)
+            cat = guild.get_channel(int(cat_id))
             if isinstance(cat, discord.CategoryChannel):
                 return cat
 
