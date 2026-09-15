@@ -210,6 +210,55 @@ class TicketCloseConfirmView(discord.ui.View):
         await interaction.response.edit_message(content="❌ Закрытие тикета отменено.", view=None)
 
 
+class TicketClosedControlView(discord.ui.View):
+    """Постоянная панель управления закрытым тикетом в категории CLOSED TICKETS."""
+    def __init__(self, cog):
+        super().__init__(timeout=None)
+        self.cog = cog
+
+    @discord.ui.button(
+        label="Удалить навсегда",
+        style=discord.ButtonStyle.danger,
+        emoji="🗑️",
+        custom_id="soda_btn_delete_forever"
+    )
+    async def delete_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("🗑️ Удаление канала тикета через 3 секунды...")
+        await asyncio.sleep(3)
+        try:
+            await interaction.channel.delete(reason=f"Тикет окончательно удален {interaction.user}")
+        except Exception:
+            pass
+
+    @discord.ui.button(
+        label="Транскрипт",
+        style=discord.ButtonStyle.secondary,
+        emoji="📜",
+        custom_id="soda_btn_closed_transcript"
+    )
+    async def transcript_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+        if not isinstance(interaction.channel, discord.TextChannel):
+            return
+        transcript_file = await generate_html_transcript(interaction.channel)
+        discord_file = discord.File(fp=transcript_file, filename=f"transcript-{interaction.channel.name}.html")
+        await interaction.followup.send(
+            content="📄 Транскрипт закрытого тикета:",
+            file=discord_file,
+            ephemeral=True
+        )
+
+    @discord.ui.button(
+        label="Открыть заново",
+        style=discord.ButtonStyle.success,
+        emoji="🔓",
+        custom_id="soda_btn_reopen"
+    )
+    async def reopen_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await self.cog.reopen_ticket(interaction.channel, reopened_by=interaction.user)
+
+
 class TicketsCog(commands.Cog, name="Tickets"):
     def __init__(self, bot: commands.Bot, config: dict):
         self.bot = bot
@@ -219,6 +268,7 @@ class TicketsCog(commands.Cog, name="Tickets"):
         # Регистрируем постоянные Views
         self.bot.add_view(TicketLauncherView(self))
         self.bot.add_view(TicketControlView(self))
+        self.bot.add_view(TicketClosedControlView(self))
 
     async def get_or_create_category(self, guild: discord.Guild) -> discord.CategoryChannel:
         cat_id = self.config.get("ticket_category_id", 0)
@@ -315,9 +365,40 @@ class TicketsCog(commands.Cog, name="Tickets"):
             ephemeral=True
         )
 
-    async def close_ticket(self, channel: discord.TextChannel, closed_by: discord.Member | discord.User):
-        await channel.send(f"🔒 Тикет закрывается пользователем {closed_by.mention}. Сохранение транскрипта...")
+    async def get_closed_category(self, guild: discord.Guild) -> discord.CategoryChannel:
+        cat_id = self.config.get("closed_category_id", 0)
+        if cat_id:
+            cat = guild.get_channel(cat_id)
+            if isinstance(cat, discord.CategoryChannel):
+                return cat
 
+        for cat in guild.categories:
+            if "closed" in cat.name.lower() or "закрыт" in cat.name.lower() or "архив" in cat.name.lower():
+                return cat
+
+        return await guild.create_category("🔒・CLOSED TICKETS・📁")
+
+    async def close_ticket(self, channel: discord.TextChannel, closed_by: discord.Member | discord.User):
+        await channel.send(f"🔒 Тикет закрывается пользователем {closed_by.mention}. Перемещение в архив...")
+
+        # 1. Перемещение в категорию закрытых тикетов и переименование
+        closed_category = await self.get_closed_category(channel.guild)
+        clean_name = channel.name.replace("soda-", "").replace("closed-", "")
+        new_channel_name = f"closed-{clean_name[:12]}"
+        try:
+            await channel.edit(category=closed_category, name=new_channel_name)
+        except Exception:
+            pass
+
+        # 2. Отзываем права на отправку сообщений у автора
+        for target, overwrite in channel.overwrites.items():
+            if isinstance(target, discord.Member) and not target.bot:
+                try:
+                    await channel.set_permissions(target, send_messages=False, view_channel=True, read_message_history=True)
+                except Exception:
+                    pass
+
+        # 3. Транскрипт
         transcript_buffer = await generate_html_transcript(channel)
         filename = f"transcript-{channel.name}.html"
 
@@ -352,13 +433,45 @@ class TicketsCog(commands.Cog, name="Tickets"):
                 except Exception:
                     pass
 
-        delete_delay = self.config.get("delete_delay_seconds", 5)
-        await channel.send(f"⏱️ Канал будет автоматически удален через {delete_delay} сек.")
-        await asyncio.sleep(delete_delay)
+        # 4. Отправляем карточку закрытого тикета с кнопками управления
+        closed_embed = discord.Embed(
+            title="🔒 Тикет закрыт и перемещён в архив",
+            description=f"Тикет был закрыт пользователем {closed_by.mention}.\n"
+                        f"Канал перенесён в категорию **`{closed_category.name}`**.\n"
+                        f"Автор больше не может отправлять сообщения.\n\n"
+                        f"Для окончательного удаления нажмите кнопку **Удалить навсегда** ниже.",
+            color=discord.Color.dark_gray()
+        )
+        closed_embed.set_footer(text="Sodalite DLC • Архив тикетов")
+        view = TicketClosedControlView(self)
+        await channel.send(embed=closed_embed, view=view)
+
+    async def reopen_ticket(self, channel: discord.TextChannel, reopened_by: discord.Member | discord.User):
+        open_category = await self.get_or_create_category(channel.guild)
+        clean_name = channel.name.replace("closed-", "").replace("soda-", "")
+        new_name = f"soda-{clean_name[:12]}"
+
         try:
-            await channel.delete(reason=f"Sodalite DLC: тикет закрыт {closed_by}")
-        except discord.NotFound:
+            await channel.edit(category=open_category, name=new_name)
+        except Exception:
             pass
+
+        # Восстанавливаем права автору
+        for target, overwrite in channel.overwrites.items():
+            if isinstance(target, discord.Member) and not target.bot:
+                try:
+                    await channel.set_permissions(target, send_messages=True, view_channel=True, read_message_history=True, attach_files=True)
+                except Exception:
+                    pass
+
+        reopen_embed = discord.Embed(
+            title="🔓 Тикет снова открыт",
+            description=f"Тикет был открыт заново пользователем {reopened_by.mention}!\n"
+                        f"Канал возвращён в категорию активных тикетов **`{open_category.name}`**.",
+            color=SODALITE_COLOR
+        )
+        view = TicketControlView(self)
+        await channel.send(embed=reopen_embed, view=view)
 
     @app_commands.command(name="ticket-panel", description="Отправить панель тикетов Sodalite DLC в текущий канал")
     @app_commands.default_permissions(administrator=True)

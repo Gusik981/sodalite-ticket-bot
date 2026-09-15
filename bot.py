@@ -36,6 +36,7 @@ def load_config() -> dict:
     cfg.setdefault("guild_id", 1284717549535363212)
     cfg.setdefault("support_role_id", 1548007523024506960)  # Роль @Developer
     cfg.setdefault("ticket_category_id", 1549529612936024155)  # Категория 🎫・ТИКЕТЫ・💎
+    cfg.setdefault("closed_category_id", 1549529968210481293)  # Категория 🔒・CLOSED TICKETS・📁
 
     # Переменные окружения имеют приоритет (для облачных хостингов и GitHub)
     if os.getenv("DISCORD_TOKEN"):
