@@ -453,11 +453,11 @@ class TicketsCog(commands.Cog, name="Tickets"):
         except Exception:
             pass
 
-        # 2. Полностью удаляем персональные оверрайты участников (канал синхронизируется с категорией закрытых тикетов)
-        for target, overwrite in list(channel.overwrites.items()):
+        # 2. Полностью запрещаем просмотр канала автору и всем участникам тикета (мгновенно скрывает канал в клиенте)
+        for target in list(channel.overwrites.keys()):
             if isinstance(target, discord.Member) and not target.bot:
                 try:
-                    await channel.set_permissions(target, overwrite=None)
+                    await channel.set_permissions(target, view_channel=False, send_messages=False)
                 except Exception:
                     pass
 
