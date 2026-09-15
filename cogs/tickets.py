@@ -39,6 +39,47 @@ class TicketReasonModal(discord.ui.Modal, title="Sodalite DLC | Создание
         )
 
 
+class MediaApplicationModal(discord.ui.Modal, title="Sodalite DLC | Заявка на Медиа"):
+    channel_url = discord.ui.TextInput(
+        label="Ссылка на ваш канал / соцсеть",
+        placeholder="https://youtube.com/@... или twitch.tv/... или tiktok/...",
+        max_length=150,
+        required=True
+    )
+    subscribers = discord.ui.TextInput(
+        label="Подписчики и средние просмотры",
+        placeholder="Например: 5,000 подписчиков, ~2k просмотров на видео",
+        max_length=100,
+        required=True
+    )
+    plans = discord.ui.TextInput(
+        label="Планы по съемке Sodalite DLC",
+        style=discord.TextStyle.paragraph,
+        placeholder="Какой контент планируете делать с Sodalite DLC? (обзоры, дуэли, стримы...)",
+        max_length=1000,
+        required=True
+    )
+
+    def __init__(self, cog):
+        super().__init__()
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        details = (
+            f"**Канал:** {self.channel_url.value}\n"
+            f"**Статистика:** {self.subscribers.value}\n"
+            f"**Планы на контент:**\n{self.plans.value}"
+        )
+        await self.cog.create_ticket_channel(
+            interaction=interaction,
+            category_name="Заявка на Медиа",
+            topic=f"Медиа-заявка от {interaction.user}",
+            details=details,
+            is_media=True
+        )
+
+
 class TicketLauncherView(discord.ui.View):
     """Постоянная панель создания тикетов Sodalite DLC."""
     def __init__(self, cog):
@@ -64,6 +105,12 @@ class TicketLauncherView(discord.ui.View):
                 emoji="💳"
             ),
             discord.SelectOption(
+                label="Заявка на Медиа",
+                value="media_application",
+                description="YouTube, Twitch, TikTok, сотрудничество",
+                emoji="🎬"
+            ),
+            discord.SelectOption(
                 label="Вопрос или предложение",
                 value="general_question",
                 description="Идеи для Sodalite DLC, помощь по функционалу",
@@ -79,6 +126,11 @@ class TicketLauncherView(discord.ui.View):
     )
     async def select_category(self, interaction: discord.Interaction, select: discord.ui.Select):
         selected_value = select.values[0]
+        if selected_value == "media_application":
+            modal = MediaApplicationModal(cog=self.cog)
+            await interaction.response.send_modal(modal)
+            return
+
         categories = {
             "tech_support": "Техническая помощь / Баги",
             "billing_support": "Оплата / Ключи / Подписка",
@@ -283,7 +335,7 @@ class TicketsCog(commands.Cog, name="Tickets"):
 
         return await guild.create_category("🎫・TICKETS・💎")
 
-    async def create_ticket_channel(self, interaction: discord.Interaction, category_name: str, topic: str, details: str):
+    async def create_ticket_channel(self, interaction: discord.Interaction, category_name: str, topic: str, details: str, is_media: bool = False):
         guild = interaction.guild
         user = interaction.user
 
@@ -292,10 +344,11 @@ class TicketsCog(commands.Cog, name="Tickets"):
             return
 
         # Проверка на наличие уже открытого тикета
-        existing = discord.utils.find(lambda c: c.name.startswith(f"soda-{user.name.lower()[:12]}"), guild.text_channels)
+        prefix = "media-" if is_media else "soda-"
+        existing = discord.utils.find(lambda c: c.name.startswith(f"{prefix}{user.name.lower()[:10]}"), guild.text_channels)
         if existing:
             await interaction.followup.send(
-                f"⚠️ У вас уже открыт тикет: {existing.mention}. Пожалуйста, используйте его.",
+                f"⚠️ У вас уже есть открытый канал: {existing.mention}. Пожалуйста, используйте его.",
                 ephemeral=True
             )
             return
@@ -332,25 +385,36 @@ class TicketsCog(commands.Cog, name="Tickets"):
                 embed_links=True
             )
 
-        channel_name = f"soda-{user.name[:12].lower()}"
+        channel_name = f"media-{user.name[:10].lower()}" if is_media else f"soda-{user.name[:10].lower()}"
         channel = await guild.create_text_channel(
             name=channel_name,
             category=category,
             overwrites=overwrites,
-            topic=f"Sodalite DLC Тикет: {user} | {category_name} | ID: {user.id}"
+            topic=f"Sodalite DLC | {category_name}: {user} | ID: {user.id}"
         )
 
-        embed = discord.Embed(
-            title=f"💎 Sodalite DLC | {category_name}",
-            description=f"Приветствуем, {user.mention}!\n"
-                        f"Ваше обращение принято службой поддержки **Sodalite DLC**.\n"
-                        f"Опишите все детали, приложите логи и скриншоты при наличии. "
-                        f"Специалисты ответят вам в ближайшее время.",
-            color=SODALITE_COLOR
-        )
-        embed.add_field(name="📌 Тема обращения", value=topic, inline=False)
-        embed.add_field(name="📝 Описание проблемы", value=details, inline=False)
-        embed.set_footer(text="Sodalite DLC Support • Используйте кнопки ниже для управления")
+        if is_media:
+            embed = discord.Embed(
+                title="🎬 Sodalite DLC | Заявка на Медиа-сотрудничество",
+                description=f"Приветствуем, {user.mention}!\n"
+                            f"Ваша заявка на получение **Медиа-статуса** по Sodalite DLC успешно отправлена.\n"
+                            f"Администрация и разработчики ознакомятся с вашей анкетой и ответят вам прямо здесь.",
+                color=discord.Color.gold()
+            )
+            embed.add_field(name="📋 Анкета заявителя", value=details, inline=False)
+            embed.set_footer(text="Sodalite DLC Media Team • Ожидайте рассмотрения")
+        else:
+            embed = discord.Embed(
+                title=f"💎 Sodalite DLC | {category_name}",
+                description=f"Приветствуем, {user.mention}!\n"
+                            f"Ваше обращение принято службой поддержки **Sodalite DLC**.\n"
+                            f"Опишите все детали, приложите логи и скриншоты при наличии. "
+                            f"Специалисты ответят вам в ближайшее время.",
+                color=SODALITE_COLOR
+            )
+            embed.add_field(name="📌 Тема обращения", value=topic, inline=False)
+            embed.add_field(name="📝 Описание проблемы", value=details, inline=False)
+            embed.set_footer(text="Sodalite DLC Support • Используйте кнопки ниже для управления")
 
         mention_str = f"{user.mention}"
         if support_role:
