@@ -416,8 +416,6 @@ class TicketsCog(commands.Cog, name="Tickets"):
             embed.set_footer(text="Sodalite DLC Support • Используйте кнопки ниже для управления")
 
         mention_str = f"{user.mention}"
-        if support_role:
-            mention_str += f" | {support_role.mention}"
 
         view = TicketControlView(self)
         await channel.send(content=mention_str, embed=embed, view=view)
