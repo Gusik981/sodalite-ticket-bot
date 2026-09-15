@@ -131,8 +131,11 @@ async def main():
     token = config.get("token", "").strip()
 
     if not token or token == "YOUR_BOT_TOKEN_HERE":
-        logger.warning("Укажите токен в config.json!")
-        return
+        logger.error("=" * 60)
+        logger.error("ОШИБКА: Токен бота не найден!")
+        logger.error("Проверьте, что в GitHub Settings -> Secrets -> Actions добавлен секрет DISCORD_TOKEN.")
+        logger.error("=" * 60)
+        sys.exit(1)
 
     bot = TicketBot(config)
     async with bot:
