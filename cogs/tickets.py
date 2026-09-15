@@ -449,15 +449,15 @@ class TicketsCog(commands.Cog, name="Tickets"):
         clean_name = channel.name.replace("soda-", "").replace("closed-", "")
         new_channel_name = f"closed-{clean_name[:12]}"
         try:
-            await channel.edit(category=closed_category, name=new_channel_name)
+            await channel.edit(category=closed_category, name=new_channel_name, sync_permissions=True)
         except Exception:
             pass
 
-        # 2. Полностью скрываем канал от автора тикета (закрытый тикет видят ТОЛЬКО персонал и Developer)
-        for target, overwrite in channel.overwrites.items():
+        # 2. Полностью удаляем персональные оверрайты участников (канал синхронизируется с категорией закрытых тикетов)
+        for target, overwrite in list(channel.overwrites.items()):
             if isinstance(target, discord.Member) and not target.bot:
                 try:
-                    await channel.set_permissions(target, view_channel=False)
+                    await channel.set_permissions(target, overwrite=None)
                 except Exception:
                     pass
 
