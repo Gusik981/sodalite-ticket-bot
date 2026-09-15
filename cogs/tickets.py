@@ -453,11 +453,11 @@ class TicketsCog(commands.Cog, name="Tickets"):
         except Exception:
             pass
 
-        # 2. Отзываем права на отправку сообщений у автора
+        # 2. Полностью скрываем канал от автора тикета (закрытый тикет видят ТОЛЬКО персонал и Developer)
         for target, overwrite in channel.overwrites.items():
             if isinstance(target, discord.Member) and not target.bot:
                 try:
-                    await channel.set_permissions(target, send_messages=False, view_channel=True, read_message_history=True)
+                    await channel.set_permissions(target, view_channel=False)
                 except Exception:
                     pass
 
