@@ -110,12 +110,6 @@ class TicketLauncherView(discord.ui.View):
                 emoji="🎬"
             ),
             discord.SelectOption(
-                label="Вопрос или предложение",
-                value="general_question",
-                description="Идеи для Sodalite DLC, помощь по функционалу",
-                emoji="💡"
-            ),
-            discord.SelectOption(
                 label="Жалоба / Другое",
                 value="other_report",
                 description="Жалобы или нестандартные вопросы",
@@ -133,7 +127,6 @@ class TicketLauncherView(discord.ui.View):
         categories = {
             "tech_support": "Техническая помощь / Баги",
             "billing_support": "Оплата / Ключи / Подписка",
-            "general_question": "Вопрос / Предложение",
             "other_report": "Жалоба / Другое"
         }
         category_name = categories.get(selected_value, "Поддержка Sodalite DLC")
